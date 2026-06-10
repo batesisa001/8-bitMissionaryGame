@@ -1,0 +1,8 @@
+# local editor/agent state
+.claude/
+
+# downloaded sheet-music sources and scratch (regenerate via tools/emit_extra.py)
+tools/*.xml
+tools/*.mxl
+tools/sp_*.html
+tools/hymns_out.js

@@ -18,6 +18,7 @@ Open `index.html` in any modern browser. No build step, no dependencies — the 
 | 1–4 or click | Choose a dialogue option |
 | Enter | Continue / advance the day |
 | M | Toggle music |
+| N | Next hymn |
 
 ## The game
 
@@ -36,12 +37,19 @@ Open `index.html` in any modern browser. No build step, no dependencies — the 
 
 ## Music
 
-The soundtrack is an authentic NES-style chiptune arrangement of **"Called to Serve"**
-(Hymns no. 249, music by Adam Geibel, public domain), transcribed note-for-note from the
-official score — soprano and alto on square waves, bass on triangle, march percussion on
-the noise channel. The full hymn plays as a march while you tract; the closing phrase
-("God our strength will be…") plays softly during lessons; the "Onward, ever onward"
-chorus is the baptism fanfare.
+The soundtrack is a chiptune hymnbook: **31 hymns** in authentic NES-style arrangements —
+soprano and alto on square waves, bass on triangle, percussion on the noise channel —
+every one transcribed note-for-note from the official scores, and every tune in the
+public domain.
+
+- **While you tract**, a rotation of 20 marches and anthems plays — "Called to Serve,"
+  "We Are All Enlisted," "Ye Elders of Israel," "The Spirit of God," "Battle Hymn of the
+  Republic," and more. A new hymn starts each morning, or press **N** to skip ahead.
+- **During lessons**, a rotation of 12 reverent hymns plays softly — "Come, Come, Ye
+  Saints," "I Stand All Amazed," "Sweet Hour of Prayer," "Abide with Me; 'Tis Eventide,"
+  and others, with the triangle wave carrying the melody.
+- **At a baptism**, the "Onward, ever onward" chorus of "Called to Serve" rings out as a
+  fanfare, then settles into the game's signature reverent theme.
 
 ---
 
