@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Called to Serve — A Missionary Story</title>
+<style>
+  html,body{margin:0;padding:0;background:#1a1a24;display:flex;align-items:center;justify-content:center;height:100%;}
+  body{flex-direction:column;font-family:monospace;}
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;border:4px solid #333;box-shadow:0 0 40px #000;
+         touch-action:manipulation;}
+  #hint{color:#888;font-size:12px;margin-top:8px;}
+  @media (max-width:1000px){
+    canvas{width:100vw;height:auto;border:none;box-shadow:none;}
+    #hint{display:none;}
+  }
+</style>
+</head>
+<body>
+<canvas id="g" width="960" height="624"></canvas>
+<div id="hint">WASD / Arrows to walk &nbsp;•&nbsp; E to knock / talk &nbsp;•&nbsp; 1–4 or click to choose &nbsp;•&nbsp; Enter to continue &nbsp;•&nbsp; M for music &nbsp;•&nbsp; N for next hymn</div>
+<script>
+'use strict';
+// ============================================================
+// CALLED TO SERVE — a top-down pixel game about LDS missionary life.
+// Two elders, a town full of doors, and the lessons from Preach My Gospel.
+// ============================================================
+const cvs = document.getElementById('g'), ctx = cvs.getContext('2d');
+const LW = 480, LH = 312, SCALE = 2, T = 12;          // low-res world, 12px tiles
+const lo = document.createElement('canvas'); lo.width = LW; lo.height = LH;
+const lctx = lo.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+

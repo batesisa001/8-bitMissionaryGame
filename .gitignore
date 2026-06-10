@@ -6,3 +6,7 @@ tools/*.xml
 tools/*.mxl
 tools/sp_*.html
 tools/hymns_out.js
+tools/__pycache__/
+
+# jukebox build artifact (published in the Hymns8-bit repo)
+jukebox.html

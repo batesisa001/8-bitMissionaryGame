@@ -7,18 +7,23 @@ listening first, serving freely, and teaching the five lessons from *Preach My G
 ## Play
 
 Open `index.html` in any modern browser. No build step, no dependencies — the whole game
-(engine, pixel art, dialogue, and music) is one self-contained HTML file.
+(engine, pixel art, dialogue, and music) is one self-contained HTML file. It works on
+phones too: tap to walk, tap a door to knock, tap to choose.
+
+Progress autosaves at the start of each day — the title screen offers **Continue**, or
+press **R** there to start a new mission.
 
 ## Controls
 
 | Key | Action |
 | --- | --- |
-| WASD / Arrows | Walk |
+| WASD / Arrows | Walk (or tap the map on touch screens) |
 | E / Space | Knock on doors, talk to people |
-| 1–4 or click | Choose a dialogue option |
+| 1–4 or click/tap | Choose a dialogue option |
 | Enter | Continue / advance the day |
 | M | Toggle music |
 | N | Next hymn |
+| R (title screen) | Start a new mission |
 
 ## The game
 
@@ -33,7 +38,23 @@ Open `index.html` in any modern browser. No build step, no dependencies — the 
   9:00 PM curfew.
 - **Spirit meter**: kindness, service, and sincere testimony raise it; arguing and
   pushiness drain it — and it changes how people respond at the door.
+- **Energy meter**: every door and lesson costs something. Sleep helps, but a string of
+  hard days catches up with you, and tired elders teach poorly.
+- **Morning study**: choose a study topic each morning — study what you'll teach today
+  and the lesson lands noticeably better.
 - **Goal**: help someone enter the waters of baptism. Then keep going.
+
+## Developing
+
+The shipped game is a single `index.html`, built by concatenating the modules in `src/`:
+
+```
+python tools/build_game.py        # src/*  ->  index.html
+python tools/build_game_music.py  # refresh the hymn library from tools/jukebox_extra.js, then rebuild
+```
+
+`src/15_hymn_library.gen.js` is generated — edit `tools/jukebox_extra.js` (or add hymns
+via `tools/emit_extra.py`) instead.
 
 ## Music
 

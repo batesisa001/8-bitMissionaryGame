@@ -2,12 +2,18 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Called to Serve — A Missionary Story</title>
 <style>
   html,body{margin:0;padding:0;background:#1a1a24;display:flex;align-items:center;justify-content:center;height:100%;}
   body{flex-direction:column;font-family:monospace;}
-  canvas{image-rendering:pixelated;image-rendering:crisp-edges;border:4px solid #333;box-shadow:0 0 40px #000;}
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;border:4px solid #333;box-shadow:0 0 40px #000;
+         touch-action:manipulation;}
   #hint{color:#888;font-size:12px;margin-top:8px;}
+  @media (max-width:1000px){
+    canvas{width:100vw;height:auto;border:none;box-shadow:none;}
+    #hint{display:none;}
+  }
 </style>
 </head>
 <body>
@@ -328,7 +334,15 @@ const Music = {
   },
   init() {
     if (this.timer) return;
+    // ask iOS (16.4+) to treat us as media playback so the silent switch doesn't mute us
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
     try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
+    // mobile unlock: a tick of silence, started inside the first user gesture
+    try {
+      const u = AC.createBufferSource();
+      u.buffer = AC.createBuffer(1, 1, 22050);
+      u.connect(AC.destination); u.start(0);
+    } catch (e) {}
     const sr = AC.sampleRate, b = AC.createBuffer(1, sr*0.2|0, sr), d = b.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random()*2 - 1;
     this.noiseBuf = b;
@@ -390,10 +404,11 @@ const Music = {
 document.addEventListener('visibilitychange', () => { if (AC) (document.hidden ? AC.suspend() : AC.resume()); });
 
 // ---------------- game state ----------------
-let mode = 'title';          // title | daystart | play | dlg | summary | ceremony
+let mode = 'title';          // title | daystart | study | play | dlg | summary | ceremony
 let day = 1;
 let time = 600;              // minutes since midnight (10:00 AM)
 let spirit = 70;
+let energy = 100;            // tired elders teach poorly; sleep (and someday P-Day) restores it
 const stats = { doors:0, convos:0, cards:0, boms:0, appts:0, lessons:0, friends:0,
                 atChurch:0, bapDates:0, baptisms:0, service:0 };
 const dayStats = {};
@@ -401,7 +416,26 @@ function resetDayStats(){ for (const k in stats) dayStats[k] = stats[k]; }
 resetDayStats();
 function bump(k, n){ stats[k] += (n===undefined?1:n); }
 function addSpirit(n){ spirit = Math.max(0, Math.min(100, spirit + n)); }
+function addEnergy(n){ energy = Math.max(0, Math.min(100, energy + n)); }
 function tc(m){ time += m; }                       // time cost in minutes
+
+// ---------------- morning study ----------------
+// One topic per morning; studying what you'll teach today makes the lesson land.
+const STUDY_TOPICS = [
+  { t:'The Restoration',            d:'Joseph Smith\'s first prayer. You underline "ask of God."',        lesson:1 },
+  { t:'The Plan of Salvation',      d:'Where we came from, why we\'re here, where we go after.',          lesson:2 },
+  { t:'The Gospel of Jesus Christ', d:'Faith, repentance, baptism, the Holy Ghost, enduring.',            lesson:3 },
+  { t:'The Commandments',           d:'Blessings are predicated on laws. You make a list.',               lesson:4 },
+  { t:'Laws and Ordinances',        d:'Covenants as handholds, not hurdles.',                             lesson:5 },
+  { t:'Christlike Attributes',      d:'Charity, patience, humility. The chapter that reads you.',         all:3 },
+];
+let studyChoices = [];
+let studyBuff = null;        // {lesson:n} -> +8 teaching that lesson today; {all:n} -> +n everywhere
+function studyBonus(h) {
+  if (!studyBuff) return 0;
+  if (studyBuff.all) return studyBuff.all;
+  return (h && !h.baptized && h.lessons + 1 === studyBuff.lesson) ? 8 : 0;
+}
 const DAYNAMES = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 function dayName(d){ return DAYNAMES[(d-1)%7]; }
 function isSunday(d){ return (d-1)%7 === 6; }
@@ -533,11 +567,22 @@ addEventListener('keydown', e => {
   handleKey(e.key);
 });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+// mobile browsers suspend the AudioContext until a gesture lands — re-arm it on every tap/key
+for (const evt of ['pointerdown', 'touchend', 'keydown'])
+  addEventListener(evt, () => { if (AC && AC.state !== 'running') AC.resume(); }, true);
 cvs.addEventListener('click', e => {
-  if (mode !== 'dlg') { handleKey('Enter'); return; }
+  if (!Music.timer) Music.init();
   const r = cvs.getBoundingClientRect();
   const mx = (e.clientX - r.left) * (cvs.width / r.width), my = (e.clientY - r.top) * (cvs.height / r.height);
-  for (const b of optBoxes) if (mx>=b.x && mx<=b.x+b.w && my>=b.y && my<=b.y+b.h) { pickOption(b.idx); return; }
+  if (mode === 'dlg' || mode === 'study') {
+    for (const b of optBoxes) if (mx>=b.x && mx<=b.x+b.w && my>=b.y && my<=b.y+b.h) {
+      if (mode === 'study') chooseStudy(b.idx); else pickOption(b.idx);
+      return;
+    }
+    if (mode === 'dlg') handleKey('Enter');
+    return;
+  }
+  if (mode === 'play') { setWalkTarget(camx + mx / 2, camy + my / 2); return; }
   handleKey('Enter');
 });
 
@@ -545,8 +590,19 @@ function handleKey(k) {
   if (!Music.timer) Music.init();
   if (k && k.toLowerCase() === 'm') { Music.toggle(); blip(700, .05); return; }
   if (k && k.toLowerCase() === 'n') { Music.nextHymn(); blip(880, .05); return; }
-  if (mode === 'title' && (k === 'Enter' || k === ' ')) { startDay(); return; }
-  if (mode === 'daystart' && k === 'Enter') { mode = 'play'; blip(660,.08); return; }
+  if (mode === 'title') {
+    if (k === 'Enter' || k === ' ') {
+      if (savedGame() && loadGame()) Music.playTown();
+      startDay(); return;
+    }
+    if (k.toLowerCase() === 'r') { clearSave(); blip(440,.07); startDay(); return; }
+    return;
+  }
+  if (mode === 'daystart' && k === 'Enter') { startStudy(); return; }
+  if (mode === 'study') {
+    if (k >= '1' && k <= '3') chooseStudy(+k - 1);
+    return;
+  }
   if (mode === 'summary' && k === 'Enter') { nextDay(); return; }
   if (mode === 'ceremony' && k === 'Enter') { mode = 'play'; Music.playTown(); blip(880,.1); return; }
   if (mode === 'dlg') {
@@ -603,7 +659,9 @@ function n(who, text, a, b) {
 }
 function o(t, go, fx, cond) { return { t, go, fx, cond }; }
 function persuade(base, h) {
-  const sc = (spirit - 50) * 0.5 + (h ? (h.interest - 50) * 0.5 : 0);
+  const sc = (spirit - 50) * 0.5 + (h ? (h.interest - 50) * 0.5 : 0)
+    + (energy < 25 ? -12 : energy < 50 ? -6 : 0)   // tired elders ramble
+    + studyBonus(h);                                // this morning's study, when it applies
   return Math.random() * 100 < base + sc;
 }
 const ME = 'Elder Young', CO = 'Elder Sorensen';
@@ -1333,7 +1391,7 @@ function tryInteract() {
   // pedestrians first
   for (const p of peds) {
     if (Math.hypot(player.x - p.x, player.y - p.y) < 18 && p.talkedDay !== day) {
-      p.talkedDay = day; blip(440,.07); openDlg(pedTree(p), null, p); return;
+      p.talkedDay = day; blip(440,.07); addEnergy(-1); openDlg(pedTree(p), null, p); return;
     }
   }
   // church
@@ -1345,7 +1403,7 @@ function tryInteract() {
 }
 function knock(h) {
   blip(220,.09); blip(200,.09);
-  tc(4); bump('doors'); h.visits++;
+  tc(4); bump('doors'); h.visits++; addEnergy(-2);
   let tree;
   if (h.baptized) tree = TREES.baptizedMember(h);
   else if (h.rejectedUntil > day) tree = TREES.rejected(h);
@@ -1385,6 +1443,7 @@ function openLesson(h) {
     }}, h);
     return;
   }
+  addEnergy(-6);                 // a full lesson takes real focus
   Music.playLesson();
   openDlg(lessonTree(h), h);
 }
@@ -1420,6 +1479,18 @@ function startDay() {
   mode = 'daystart';
   blip(660,.08);
   buildDayLines();
+  saveGame();                    // autosave each morning
+}
+function startStudy() {
+  // three of the six topics, rotating daily (offsets 0/2/4 are always distinct mod 6)
+  studyChoices = [0, 1, 2].map(i => STUDY_TOPICS[(day - 1 + i * 2) % STUDY_TOPICS.length]);
+  mode = 'study'; blip(550,.07);
+}
+function chooseStudy(i) {
+  const t = studyChoices[i]; if (!t) return;
+  studyBuff = t.all ? { all: t.all } : { lesson: t.lesson };
+  addSpirit(2); blip(720,.07);
+  mode = 'play';
 }
 function buildDayLines() {
   dayLines = [
@@ -1447,6 +1518,7 @@ function buildDayLines() {
   } else {
     dayLines.push(`10:00 AM — Out the door. Companions stay together — always.`);
   }
+  if (energy < 40) dayLines.push(``, `   (You're running on fumes. Teaching is harder when you're tired.)`);
   const appts = houses.filter(h => h.stage==='appt' && h.apptDay<=day || (h.stage==='investigator' && !h.dropped && h.taughtDay<day && h.lessons<5));
   if (appts.length) {
     dayLines.push(``, `TODAY'S APPOINTMENTS:`);
@@ -1460,11 +1532,41 @@ function endDay() {
 function nextDay() {
   day++;
   time = isSunday(day) ? 780 : 600;
+  addEnergy(55);                 // sleep helps; a string of hard days still catches up with you
+  studyBuff = null;
+  walkTarget = null;
   resetDayStats();
   for (const p of peds) p.talkedDay = 0;
   Music.hymnIdx = (day - 1) % TOWN_TRACKS.length;   // a new hymn each morning
   Music.playTown();
   startDay();
+}
+
+// ---------------- tap-to-walk ----------------
+let walkTarget = null, walkStuck = 0;
+function doorRoute(b, doorX, doorY) {
+  // doors face down; if we're beside or above the building, swing around it first
+  const wps = [];
+  if (player.y < doorY - 6 && player.x > b.x - 10 && player.x < b.x + b.w + 10) {
+    const sideX = (player.x < b.x + b.w / 2) ? b.x - 9 : b.x + b.w + 9;
+    wps.push({ x: sideX, y: doorY + 10 });
+  }
+  wps.push({ x: doorX, y: doorY + 6 });
+  return wps;
+}
+function setWalkTarget(wx, wy) {
+  walkStuck = 0;
+  // tapping a door, the chapel, or a passer-by walks there and interacts on arrival
+  for (const p of peds) if (Math.hypot(wx - p.x, wy - p.y) < 14 && p.talkedDay !== day) {
+    walkTarget = { wps: [], interact: true, ped: p }; return;
+  }
+  if (wx > church.x - 6 && wx < church.x + church.w + 6 && wy > church.y - 6 && wy < church.y + church.h + 12) {
+    walkTarget = { wps: doorRoute(church, church.dx + 5, church.dy), interact: true }; return;
+  }
+  for (const h of houses) if (wx > h.x - 5 && wx < h.x + h.w + 5 && wy > h.y - 5 && wy < h.y + h.h + 12) {
+    walkTarget = { wps: doorRoute(h, h.dx + 4, h.dy), interact: true }; return;
+  }
+  walkTarget = { wps: [{ x: wx, y: wy }], interact: false };
 }
 
 // ---------------- update ----------------
@@ -1474,17 +1576,34 @@ function update(dt) {
   time += (dt / 1000) * 0.55;   // ~0.55 in-game minutes per real second
   if (time >= 1260) { endDay(); return; }
   const sp = 1.45;
-  let vx = 0, vy = 0;
+  let vx = 0, vy = 0, fromKeys = false;
   if (keys['arrowup']||keys['w']) vy = -1;
   if (keys['arrowdown']||keys['s']) vy = 1;
   if (keys['arrowleft']||keys['a']) vx = -1;
   if (keys['arrowright']||keys['d']) vx = 1;
+  if (vx || vy) { fromKeys = true; walkTarget = null; }
+  else if (walkTarget) {
+    const wt = walkTarget;
+    const t = wt.ped ? { x: wt.ped.x, y: wt.ped.y + 8 } : wt.wps[0];   // pedestrians keep moving
+    const dx = t.x - player.x, dy = t.y - player.y;
+    const dist = Math.hypot(dx, dy);
+    const last = wt.ped || wt.wps.length <= 1;
+    if (dist < (last && wt.interact ? 6 : last ? 3 : 6)) {
+      if (last) { walkTarget = null; if (wt.interact) tryInteract(); }
+      else wt.wps.shift();
+    } else { vx = dx / dist; vy = dy / dist; }
+  }
   player.moving = !!(vx||vy);
   if (player.moving) {
-    if (vx&&vy){ vx*=0.707; vy*=0.707; }
+    if (fromKeys && vx && vy){ vx*=0.707; vy*=0.707; }
+    const ox = player.x, oy = player.y;
     const nx = player.x + vx*sp, ny = player.y + vy*sp;
     if (!collides(nx, player.y)) player.x = nx;
     if (!collides(player.x, ny)) player.y = ny;
+    if (walkTarget) {                                             // give up if pinned on a wall
+      walkStuck = (Math.hypot(player.x - ox, player.y - oy) < 0.2) ? walkStuck + dt : 0;
+      if (walkStuck > 600) walkTarget = null;
+    }
     player.fx = Math.abs(vx)>Math.abs(vy)?Math.sign(vx):0;
     player.fy = Math.abs(vy)>=Math.abs(vx)?Math.sign(vy):0;
     player.frame += dt*0.012;
@@ -1699,15 +1818,21 @@ function drawHUD() {
   ctx.fillText(clock(), 200, 20);
   // curfew warning
   if (time > 1200) { ctx.fillStyle = '#ff8866'; ctx.fillText('Curfew 9:00 PM!', 300, 20); }
-  // music indicator + spirit meter
-  ctx.fillStyle = Music.on ? '#9c9' : '#555'; ctx.fillText('♪', 432, 20);
-  ctx.fillStyle = '#ccc'; ctx.fillText('SPIRIT', 470, 20);
-  ctx.fillStyle = '#333'; ctx.fillRect(540, 9, 120, 13);
-  const sg = ctx.createLinearGradient(540,0,660,0); sg.addColorStop(0,'#cc8833'); sg.addColorStop(1,'#ffdd66');
-  ctx.fillStyle = sg; ctx.fillRect(540, 9, 120*spirit/100, 13);
-  ctx.strokeStyle = '#888'; ctx.strokeRect(540.5,9.5,120,13);
+  // music indicator + spirit & energy meters
+  ctx.fillStyle = Music.on ? '#9c9' : '#555'; ctx.fillText('♪', 400, 20);
+  ctx.fillStyle = '#ccc'; ctx.fillText('SPIRIT', 428, 20);
+  ctx.fillStyle = '#333'; ctx.fillRect(492, 9, 96, 13);
+  const sg = ctx.createLinearGradient(492,0,588,0); sg.addColorStop(0,'#cc8833'); sg.addColorStop(1,'#ffdd66');
+  ctx.fillStyle = sg; ctx.fillRect(492, 9, 96*spirit/100, 13);
+  ctx.strokeStyle = '#888'; ctx.strokeRect(492.5,9.5,96,13);
+  ctx.fillStyle = '#ccc'; ctx.fillText('ENERGY', 604, 20);
+  ctx.fillStyle = '#333'; ctx.fillRect(676, 9, 96, 13);
+  if (energy < 25) ctx.fillStyle = '#cc5544';
+  else { const eg = ctx.createLinearGradient(676,0,772,0); eg.addColorStop(0,'#338855'); eg.addColorStop(1,'#88ee99'); ctx.fillStyle = eg; }
+  ctx.fillRect(676, 9, 96*energy/100, 13);
+  ctx.strokeStyle = '#888'; ctx.strokeRect(676.5,9.5,96,13);
   ctx.fillStyle = '#ddd'; ctx.font = '13px monospace';
-  ctx.fillText(`Lessons ${stats.lessons}  BoM ${stats.boms}  Appts ${stats.appts}  Baptisms ${stats.baptisms}`, 680, 20);
+  ctx.fillText(`Lessons ${stats.lessons}  ★ ${stats.baptisms}`, 800, 20);
   if (promptText && mode==='play') {
     ctx.font = 'bold 15px monospace'; ctx.textAlign='center';
     ctx.fillStyle = 'rgba(10,10,20,0.85)';
@@ -1811,6 +1936,29 @@ function drawModal(title, lines, footer, accent) {
   if (footer) { ctx.fillStyle = '#999'; ctx.font = 'italic 13px monospace'; ctx.fillText(footer, 480, 546); }
   ctx.textAlign='left';
 }
+function drawStudy() {
+  panel(140, 100, 680, 420, '#aab');
+  ctx.textAlign='center';
+  ctx.fillStyle = '#ffd966'; ctx.font = 'bold 20px monospace';
+  ctx.fillText('PERSONAL STUDY — 7:00 AM', 480, 140);
+  ctx.fillStyle = '#ddd'; ctx.font = '14px monospace';
+  ctx.fillText('Elder Sorensen is already marking pages. Choose this', 480, 172);
+  ctx.fillText("morning's focus — it will carry into today's teaching.", 480, 191);
+  optBoxes = [];
+  studyChoices.forEach((t, i) => {
+    const y = 225 + i * 80;
+    ctx.fillStyle = 'rgba(60,60,90,0.6)'; ctx.fillRect(200, y, 560, 64);
+    ctx.strokeStyle = '#778'; ctx.strokeRect(200.5, y+0.5, 560, 64);
+    ctx.fillStyle = '#ffee99'; ctx.font = 'bold 15px monospace';
+    ctx.fillText(`${i+1}. ${t.t}`, 480, y + 26);
+    ctx.fillStyle = '#aac'; ctx.font = '13px monospace';
+    ctx.fillText(t.d, 480, y + 48);
+    optBoxes.push({x:200, y, w:560, h:64, idx:i});
+  });
+  ctx.fillStyle = '#999'; ctx.font = 'italic 13px monospace';
+  ctx.fillText('[ 1–3 or tap to choose ]', 480, 506);
+  ctx.textAlign='left';
+}
 function drawTitle() {
   ctx.fillStyle = '#101020'; ctx.fillRect(0,0,960,624);
   // decorative pixels
@@ -1836,12 +1984,17 @@ function drawTitle() {
     '',
     'WASD / Arrows — walk      E — knock & talk      1-4 / click — choose',
     'Enter — continue      M — music on/off      N — next hymn',
-    '♪ One 8-bit hymn per day: "Called to Serve," "We Are All Enlisted,"',
-    '"Praise to the Man," "High on the Mountain Top" — all public domain',
+    'On touch screens: tap to walk, tap a door to knock, tap to choose.',
+    '♪ A new 8-bit hymn every morning — 31 public-domain hymns in all.',
+    'Progress autosaves at the start of each day.',
   ];
   let y = 240; for (const l of intro){ ctx.fillText(l, 480, y); y+=24; }
   ctx.fillStyle = '#ffee99'; ctx.font = 'bold 17px monospace';
-  ctx.fillText(Math.floor(performance.now()/500)%2 ? '[ Press ENTER to begin Day 1 ]' : '', 480, 590);
+  const sv = savedGame();
+  if (Math.floor(performance.now()/500)%2) {
+    ctx.fillText(sv ? `[ Enter — continue Day ${sv.day} ]` : '[ Press ENTER to begin Day 1 ]', 480, 578);
+  }
+  if (sv) { ctx.fillStyle = '#8aa'; ctx.font = '13px monospace'; ctx.fillText('[ R — start a new mission ]', 480, 602); }
   ctx.textAlign='left';
 }
 function summaryLines() {
@@ -1870,6 +2023,42 @@ function summaryLines() {
   ];
 }
 
+// ---------------- save / load ----------------
+// Autosaves every morning (startDay). Continue from the title screen; R starts over.
+const SAVE_KEY = 'cts_save_v1';
+const HOUSE_STATIC = new Set(['i', 'arch', 'color', 'x', 'y', 'w', 'h', 'dx', 'dy']);
+function saveGame() {
+  try {
+    const data = {
+      v: 1, day, spirit, energy, hymnIdx: Music.hymnIdx,
+      stats: Object.assign({}, stats),
+      houses: houses.map(h => {
+        const o = {};
+        for (const k in h) {
+          const v = h[k];
+          if (!HOUSE_STATIC.has(k) && (typeof v === 'number' || typeof v === 'string' || typeof v === 'boolean')) o[k] = v;
+        }
+        return o;
+      }),
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+  } catch (e) {}
+}
+function savedGame() {
+  try { const d = JSON.parse(localStorage.getItem(SAVE_KEY)); return d && d.v === 1 ? d : null; }
+  catch (e) { return null; }
+}
+function loadGame() {
+  const d = savedGame(); if (!d) return false;
+  day = d.day; spirit = d.spirit; energy = d.energy === undefined ? 100 : d.energy;
+  Object.assign(stats, d.stats);
+  d.houses.forEach((o, i) => { if (houses[i]) Object.assign(houses[i], o); });
+  time = isSunday(day) ? 780 : 600;
+  resetDayStats();
+  Music.hymnIdx = (d.hymnIdx || 0) % TOWN_TRACKS.length;
+  return true;
+}
+function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
 // ---------------- main loop ----------------
 function frame(now) {
   const dt = Math.min(50, now - last); last = now;
@@ -1887,7 +2076,8 @@ function frame(now) {
   drawHUD();
   if (mode === 'play') drawMinimap();
   if (mode === 'title') drawTitle();
-  else if (mode === 'daystart') drawModal('MISSIONARY DAILY SCHEDULE', dayLines, null, '#ffd966');
+  else if (mode === 'daystart') drawModal('MISSIONARY DAILY SCHEDULE', dayLines, '[ Enter — personal study ]', '#ffd966');
+  else if (mode === 'study') drawStudy();
   else if (mode === 'dlg') drawDlg();
   else if (mode === 'summary') drawModal('NIGHTLY PLANNING — KEY INDICATORS', summaryLines(), '[ Enter — next day ]', '#88ccff');
   else if (mode === 'ceremony') drawModal('★  A BAPTISM  ★', ceremonyText, '[ Enter — the work goes on ]', '#88ddff');
