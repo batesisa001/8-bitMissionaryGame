@@ -42,6 +42,13 @@ press **R** there to start a new mission.
   hard days catches up with you, and tired elders teach poorly.
 - **Morning study**: choose a study topic each morning — study what you'll teach today
   and the lesson lands noticeably better.
+- **P-Day (Mondays)**: chores and free time until 6 PM sharp, then back to work. Four
+  NES-honest minigames — the **laundromat rush** (a perfect sort means crisp shirts
+  and better sleep all week), **letters home** (pick four lines; Mom's reply arrives
+  Thursday and reacts to what you wrote), **church-ball** against the district elders
+  (timing-bar shots, contested steals, a whiteboard scoreboard), and **fishing the
+  park pond** (five casts; Old Gerald is in there somewhere). All optional, all
+  rewarded in energy and spirit.
 - **Goal**: help someone enter the waters of baptism. Then keep going.
 
 ## Developing

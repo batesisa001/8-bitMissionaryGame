@@ -22,6 +22,12 @@ cvs.addEventListener('click', e => {
     if (mode === 'dlg') handleKey('Enter');
     return;
   }
+  if (mode === 'pday') {
+    for (const b of optBoxes) if (mx>=b.x && mx<=b.x+b.w && my>=b.y && my<=b.y+b.h) { pdayChoose(b.idx); return; }
+    return;
+  }
+  if (mode === 'minigame') { if (MG && MG.tap) MG.tap(mx, my); return; }
+  if (mode === 'mgresult') { closeResult(); return; }
   if (mode === 'play') { setWalkTarget(camx + mx / 2, camy + my / 2); return; }
   handleKey('Enter');
 });
@@ -38,11 +44,17 @@ function handleKey(k) {
     if (k.toLowerCase() === 'r') { clearSave(); blip(440,.07); startDay(); return; }
     return;
   }
-  if (mode === 'daystart' && k === 'Enter') { startStudy(); return; }
+  if (mode === 'daystart' && k === 'Enter') { isPday(day) ? enterPday() : startStudy(); return; }
   if (mode === 'study') {
     if (k >= '1' && k <= '3') chooseStudy(+k - 1);
     return;
   }
+  if (mode === 'pday') {
+    if (k >= '1' && k <= String(PDAY_ACTS.length + 1)) pdayChoose(+k - 1);
+    return;
+  }
+  if (mode === 'minigame') { if (MG && MG.key) MG.key(k); return; }
+  if (mode === 'mgresult' && (k === 'Enter' || k === ' ')) { closeResult(); return; }
   if (mode === 'summary' && k === 'Enter') { nextDay(); return; }
   if (mode === 'ceremony' && k === 'Enter') { mode = 'play'; Music.playTown(); blip(880,.1); return; }
   if (mode === 'dlg') {

@@ -351,8 +351,8 @@ function drawTitle() {
     'WASD / Arrows — walk      E — knock & talk      1-4 / click — choose',
     'Enter — continue      M — music on/off      N — next hymn',
     'On touch screens: tap to walk, tap a door to knock, tap to choose.',
-    '♪ A new 8-bit hymn every morning — 31 public-domain hymns in all.',
-    'Progress autosaves at the start of each day.',
+    '♪ A new 8-bit hymn every morning — 31 in all. Autosaves daily.',
+    'Mondays are P-DAY: laundry, letters home, church-ball, and the pond.',
   ];
   let y = 240; for (const l of intro){ ctx.fillText(l, 480, y); y+=24; }
   ctx.fillStyle = '#ffee99'; ctx.font = 'bold 17px monospace';

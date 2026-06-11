@@ -19,12 +19,23 @@ function chooseStudy(i) {
 }
 function buildDayLines() {
   dayLines = [
-    `DAY ${day} — ${dayName(day).toUpperCase()}`,
+    `DAY ${day} — ${dayName(day).toUpperCase()}${isPday(day) ? '  ★ P-DAY' : ''}`,
     ``,
+  ];
+  if (isPday(day)) {
+    dayLines.push(
+      `6:30 AM — Arise. Mondays do not believe in sleeping in.`,
+      `7:00 AM — Studies, then the weekly apartment-cleaning truce.`,
+      `10:00 AM — P-DAY. Chores first; then the day is yours until six.`,
+      `6:00 PM — sharp: ties back on. The work doesn't take Mondays off.`);
+    deliverLetter();
+    return;
+  }
+  dayLines.push(
     `6:30 AM — Arise. Elder Sorensen does push-ups; you do "push-ups."`,
     `7:00 AM — Personal study: the Book of Mormon, marked to pieces.`,
     `8:00 AM — Companion study: planning for the people you're teaching.`,
-  ];
+  );
   if (isSunday(day)) {
     const attendees = houses.filter(h => h.churchCommit && !h.baptized && !h.dropped);
     dayLines.push(`10:00 AM — SACRAMENT MEETING.`);
@@ -43,13 +54,21 @@ function buildDayLines() {
   } else {
     dayLines.push(`10:00 AM — Out the door. Companions stay together — always.`);
   }
+  deliverLetter();
   if (energy < 40) dayLines.push(``, `   (You're running on fumes. Teaching is harder when you're tired.)`);
+  if (crispUntil > day) dayLines.push(``, `   (Crisp shirts. You feel unreasonably capable.)`);
   const appts = houses.filter(h => h.stage==='appt' && h.apptDay<=day || (h.stage==='investigator' && !h.dropped && h.taughtDay<day && h.lessons<5));
   if (appts.length) {
     dayLines.push(``, `TODAY'S APPOINTMENTS:`);
     for (const h of appts) dayLines.push(`   • ${RES[h.arch].name}${h.lessons?` — Lesson ${Math.min(h.lessons+1,5)}`:''}`);
   }
-  dayLines.push(``, `[ Enter — start the day ]`);
+}
+function deliverLetter() {
+  if (pendingLetter && day >= pendingLetter.day) {
+    for (const l of letterReplyLines()) dayLines.push(l);
+    addSpirit(4);
+    pendingLetter = null;
+  }
 }
 function endDay() {
   mode = 'summary'; blip(330,.1);
@@ -57,7 +76,8 @@ function endDay() {
 function nextDay() {
   day++;
   time = isSunday(day) ? 780 : 600;
-  addEnergy(55);                 // sleep helps; a string of hard days still catches up with you
+  addEnergy(crispUntil > day ? 68 : 55);   // sleep helps; crisp shirts help more
+  pdayDone = { laundry: false, letters: false, ball: false, fish: false };
   studyBuff = null;
   walkTarget = null;
   resetDayStats();
@@ -97,6 +117,7 @@ function setWalkTarget(wx, wy) {
 // ---------------- update ----------------
 let last = performance.now();
 function update(dt) {
+  if (mode === 'minigame') { if (MG && MG.update) MG.update(dt); return; }
   if (mode !== 'play') return;
   time += (dt / 1000) * 0.55;   // ~0.55 in-game minutes per real second
   if (time >= 1260) { endDay(); return; }

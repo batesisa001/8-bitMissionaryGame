@@ -15,8 +15,11 @@ function frame(now) {
   drawHUD();
   if (mode === 'play') drawMinimap();
   if (mode === 'title') drawTitle();
-  else if (mode === 'daystart') drawModal('MISSIONARY DAILY SCHEDULE', dayLines, '[ Enter — personal study ]', '#ffd966');
+  else if (mode === 'daystart') drawModal('MISSIONARY DAILY SCHEDULE', dayLines, isPday(day) ? '[ Enter — start P-Day ]' : '[ Enter — personal study ]', '#ffd966');
   else if (mode === 'study') drawStudy();
+  else if (mode === 'pday') drawPdayHub();
+  else if (mode === 'minigame') { if (MG && MG.draw) MG.draw(); }
+  else if (mode === 'mgresult') drawModal('P-DAY', mgResult || [], time >= 1080 ? '[ Enter — back to work ]' : '[ Enter — back to P-Day ]', '#9ce');
   else if (mode === 'dlg') drawDlg();
   else if (mode === 'summary') drawModal('NIGHTLY PLANNING — KEY INDICATORS', summaryLines(), '[ Enter — next day ]', '#88ccff');
   else if (mode === 'ceremony') drawModal('★  A BAPTISM  ★', ceremonyText, '[ Enter — the work goes on ]', '#88ddff');

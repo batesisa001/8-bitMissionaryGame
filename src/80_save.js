@@ -6,6 +6,7 @@ function saveGame() {
   try {
     const data = {
       v: 1, day, spirit, energy, hymnIdx: Music.hymnIdx,
+      crispUntil, fish: Object.assign({}, fishLog), letter: pendingLetter,
       stats: Object.assign({}, stats),
       houses: houses.map(h => {
         const o = {};
@@ -26,6 +27,9 @@ function savedGame() {
 function loadGame() {
   const d = savedGame(); if (!d) return false;
   day = d.day; spirit = d.spirit; energy = d.energy === undefined ? 100 : d.energy;
+  crispUntil = d.crispUntil || 0;
+  fishLog = d.fish || { count: 0, best: '' };
+  pendingLetter = d.letter || null;
   Object.assign(stats, d.stats);
   d.houses.forEach((o, i) => { if (houses[i]) Object.assign(houses[i], o); });
   time = isSunday(day) ? 780 : 600;
