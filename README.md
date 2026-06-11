@@ -23,6 +23,7 @@ press **R** there to start a new mission.
 | Enter | Continue / advance the day |
 | M | Toggle music |
 | N | Next hymn |
+| Tab | Area book (F there assigns a fellowshipper) |
 | R (title screen) | Start a new mission |
 
 ## The game
@@ -49,6 +50,22 @@ press **R** there to start a new mission.
   (timing-bar shots, contested steals, a whiteboard scoreboard), and **fishing the
   park pond** (five casts; Old Gerald is in there somewhere). All optional, all
   rewarded in energy and spirit.
+- **Concerns**: every progressing friend carries one real obstacle — grief, Sundays,
+  tithing math, doubts, peer pressure, the coffee thing. Concerns block commitments
+  until you work through them in a dedicated visit, or with the right ward member's help.
+- **Fellowshipping**: assign ward members to friends from the area book (**Tab**, then
+  **F**). The right pairing resolves concerns and builds roots; the wrong one is an
+  awkward dinner with a 240-slide presentation — harmless, but reassign.
+- **Retention**: baptism isn't the finish line. New converts need a friend, a calling,
+  and a visit every few days for two weeks — or they quietly drift. Go knock.
+- **The area book (Tab)**: everyone you've met — stage, interest, concerns,
+  fellowshipper, weekly goals, and the fish log on the back page.
+- **Weekly goals**: Thursday-night planning sets two goals; Sunday night weighs them.
+  Choosing realistic ones is itself the skill.
+- **Unity meter**: hand your companion lesson parts, play church-ball together, let him
+  pray — a unified companionship teaches deeper. Unity is maintained, not assumed.
+- **Weather**: rainy days open fewer doors (the umbrella people stay friendly); hot
+  days cost more energy at every porch.
 - **Goal**: help someone enter the waters of baptism. Then keep going.
 
 ## Developing

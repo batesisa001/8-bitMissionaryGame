@@ -2,7 +2,7 @@
 const keys = {};
 let optBoxes = [];
 addEventListener('keydown', e => {
-  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' ','Tab'].includes(e.key)) e.preventDefault();
   keys[e.key.toLowerCase()] = true;
   handleKey(e.key);
 });
@@ -26,6 +26,12 @@ cvs.addEventListener('click', e => {
     for (const b of optBoxes) if (mx>=b.x && mx<=b.x+b.w && my>=b.y && my<=b.y+b.h) { pdayChoose(b.idx); return; }
     return;
   }
+  if (mode === 'goals') {
+    for (const b of optBoxes) if (mx>=b.x && mx<=b.x+b.w && my>=b.y && my<=b.y+b.h) { toggleGoal(b.idx); return; }
+    if (goalPicks.length === 2) confirmGoals();
+    return;
+  }
+  if (mode === 'areabook') { mode = 'play'; return; }
   if (mode === 'minigame') { if (MG && MG.tap) MG.tap(mx, my); return; }
   if (mode === 'mgresult') { closeResult(); return; }
   if (mode === 'play') { setWalkTarget(camx + mx / 2, camy + my / 2); return; }
@@ -55,7 +61,27 @@ function handleKey(k) {
   }
   if (mode === 'minigame') { if (MG && MG.key) MG.key(k); return; }
   if (mode === 'mgresult' && (k === 'Enter' || k === ' ')) { closeResult(); return; }
-  if (mode === 'summary' && k === 'Enter') { nextDay(); return; }
+  if (k === 'Tab' || (k === 'Escape' && mode === 'areabook')) {
+    if (mode === 'play') { mode = 'areabook'; blip(560,.05); }
+    else if (mode === 'areabook') { mode = 'play'; blip(440,.05); }
+    return;
+  }
+  if (mode === 'areabook') {
+    if (k === 'ArrowUp') abSel = Math.max(0, abSel - 1);
+    else if (k === 'ArrowDown') abSel = abSel + 1;
+    else if (k.toLowerCase() === 'f') abCycleMember();
+    else if (k === 'Enter') mode = 'play';
+    return;
+  }
+  if (mode === 'goals') {
+    if (k >= '1' && k <= '4') toggleGoal(+k - 1);
+    else if (k === 'Enter') confirmGoals();
+    return;
+  }
+  if (mode === 'summary' && k === 'Enter') {
+    if (goalsPending()) { startGoals(); return; }
+    nextDay(); return;
+  }
   if (mode === 'ceremony' && k === 'Enter') { mode = 'play'; Music.playTown(); blip(880,.1); return; }
   if (mode === 'dlg') {
     const n = curNode();

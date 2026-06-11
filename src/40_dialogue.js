@@ -41,6 +41,7 @@ function o(t, go, fx, cond) { return { t, go, fx, cond }; }
 function persuade(base, h) {
   const sc = (spirit - 50) * 0.5 + (h ? (h.interest - 50) * 0.5 : 0)
     + (energy < 25 ? -12 : energy < 50 ? -6 : 0)   // tired elders ramble
+    + (unity - 50) * 0.15                           // a unified companionship teaches as one
     + studyBonus(h);                                // this morning's study, when it applies
   return Math.random() * 100 < base + sc;
 }

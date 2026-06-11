@@ -28,6 +28,8 @@ function buildDayLines() {
       `7:00 AM — Studies, then the weekly apartment-cleaning truce.`,
       `10:00 AM — P-DAY. Chores first; then the day is yours until six.`,
       `6:00 PM — sharp: ties back on. The work doesn't take Mondays off.`);
+    if (weather === 'rain') dayLines.push(``, `   ☔ Rain. Church-ball weather, honestly.`);
+    if (morningNotes.length) { dayLines.push(``); for (const l of morningNotes) dayLines.push(l); morningNotes = []; }
     deliverLetter();
     return;
   }
@@ -50,11 +52,27 @@ function buildDayLines() {
         }
       }
     } else dayLines.push(`   No friends attended today. Keep inviting!`);
+    // new converts: attendance and callings
+    for (const h of houses.filter(x => x.baptized)) {
+      const nm = RES[h.arch].name;
+      if (h.drifting) dayLines.push(`   ${nm}'s seat was empty. New converts drift quietly. (Visit them.)`);
+      else {
+        bump('atChurch');
+        if (!h.calling) {
+          h.calling = true;
+          dayLines.push(`   ★ ${nm} was sustained as ${CALLINGS[h.i % CALLINGS.length]} — a reason to belong.`);
+        } else dayLines.push(`   ${nm} at the sacrament table side, steady as brick.`);
+      }
+    }
     dayLines.push(``, `1:00 PM — Out the door. Sunday afternoons are for visits.`);
   } else {
     dayLines.push(`10:00 AM — Out the door. Companions stay together — always.`);
   }
   deliverLetter();
+  if (weather === 'rain') dayLines.push(``, `   ☔ Rain today — fewer doors will open. Umbrella people stay friendly.`);
+  else if (weather === 'hot') dayLines.push(``, `   ☀ A scorcher — doors cost more energy. Hydrate, Elder.`);
+  if (morningNotes.length) { dayLines.push(``); for (const l of morningNotes) dayLines.push(l.startsWith(' ') || l.startsWith('★') ? l : `${l}`); morningNotes = []; }
+  if (weeklyGoals) dayLines.push(``, `WEEK: ` + weeklyGoals.map(g => { const p = goalProgress(g); return `${p.def.key} ${Math.min(p.got, p.def.target)}/${p.def.target}`; }).join('  •  ') + `  (Tab — area book)`);
   if (energy < 40) dayLines.push(``, `   (You're running on fumes. Teaching is harder when you're tired.)`);
   if (crispUntil > day) dayLines.push(``, `   (Crisp shirts. You feel unreasonably capable.)`);
   const appts = houses.filter(h => h.stage==='appt' && h.apptDay<=day || (h.stage==='investigator' && !h.dropped && h.taughtDay<day && h.lessons<5));
@@ -74,8 +92,11 @@ function endDay() {
   mode = 'summary'; blip(330,.1);
 }
 function nextDay() {
+  if (isSunday(day)) resolveGoals();       // the week is weighed Sunday night
   day++;
   time = isSunday(day) ? 780 : 600;
+  rollWeather();
+  dailyDepthTick();                        // fellowshipping, retention, unity upkeep
   addEnergy(crispUntil > day ? 68 : 55);   // sleep helps; crisp shirts help more
   pdayDone = { laundry: false, letters: false, ball: false, fish: false };
   studyBuff = null;

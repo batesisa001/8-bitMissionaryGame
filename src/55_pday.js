@@ -105,7 +105,7 @@ function startLaundry() {
 }
 function laundryEnd(g) {
   const perfect = g.missed === 0;
-  addEnergy(perfect ? 10 : 5);
+  addEnergy(perfect ? 10 : 5); addUnity(2);
   if (perfect) crispUntil = day + 7;
   finishActivity('laundry', 45, [
     `LAUNDROMAT RUSH — ${g.sorted}/${g.q.length} sorted${perfect ? '  ★ PERFECT' : ''}`, '',
@@ -343,7 +343,7 @@ function startBall() {
 }
 function ballEnd(g) {
   const won = g.us > g.them;
-  addEnergy(won ? 25 : 15); addSpirit(won ? 4 : 2);
+  addEnergy(won ? 25 : 15); addSpirit(won ? 4 : 2); addUnity(won ? 10 : 7);
   finishActivity('ball', 90, [
     `CHURCH-BALL — final: ELDERS ${g.us}, DISTRICT ${g.them}`, '',
     won ? 'Victory. The district elders stack chairs, muttering about "next Monday."'
@@ -463,7 +463,7 @@ function startFishing() {
 }
 function fishEnd(g) {
   const fish = g.caught.filter(c => !c.includes('boot'));
-  addEnergy(Math.min(22, 12 + fish.length * 3));
+  addEnergy(Math.min(22, 12 + fish.length * 3)); addUnity(5);
   fishLog.count += fish.length;
   const gerald = g.caught.some(c => c.includes('GERALD'));
   if (gerald) fishLog.best = 'Old Gerald, the legendary carp';

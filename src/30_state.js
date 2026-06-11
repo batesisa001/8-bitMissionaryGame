@@ -3,7 +3,9 @@ let mode = 'title';          // title | daystart | study | play | dlg | summary 
 let day = 1;
 let time = 600;              // minutes since midnight (10:00 AM)
 let spirit = 70;
-let energy = 100;            // tired elders teach poorly; sleep (and someday P-Day) restores it
+let energy = 100;            // tired elders teach poorly; sleep (and P-Day) restores it
+let unity = 60;              // companionship unity: built on purpose, spent by accident
+let weather = 'clear';       // clear | rain | hot — rolled each morning
 const stats = { doors:0, convos:0, cards:0, boms:0, appts:0, lessons:0, friends:0,
                 atChurch:0, bapDates:0, baptisms:0, service:0 };
 const dayStats = {};
@@ -12,6 +14,7 @@ resetDayStats();
 function bump(k, n){ stats[k] += (n===undefined?1:n); }
 function addSpirit(n){ spirit = Math.max(0, Math.min(100, spirit + n)); }
 function addEnergy(n){ energy = Math.max(0, Math.min(100, energy + n)); }
+function addUnity(n){ unity = Math.max(0, Math.min(100, unity + n)); }
 function tc(m){ time += m; }                       // time cost in minutes
 
 // ---------------- morning study ----------------

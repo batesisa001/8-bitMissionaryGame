@@ -151,6 +151,11 @@ function drawPed(p) {
   lctx.fillStyle = p.shirt; lctx.fillRect(px+1, py+4, 7, 6);
   lctx.fillStyle = p.skin; lctx.fillRect(px+2, py, 5, 4);
   lctx.fillStyle = p.hair; lctx.fillRect(px+2, py-1, 5, 2);
+  if (weather === 'rain') {     // umbrella people stay friendly
+    lctx.fillStyle = ['#c45','#48a','#b83'][p.kind.length % 3];
+    lctx.fillRect(px-2, py-6, 13, 2); lctx.fillRect(px+1, py-8, 7, 2);
+    lctx.fillStyle = '#653'; lctx.fillRect(px+4, py-4, 1, 4);
+  }
   if (p.kind==='dogwalker') { // Biscuit
     const dx = px + (p.dir>0?-9:12), dy = py+8;
     lctx.fillStyle = '#c89a4a'; lctx.fillRect(dx, dy, 7, 4); lctx.fillRect(dx+(p.dir>0?-2:7), dy-2, 3, 3);
@@ -184,21 +189,25 @@ function drawHUD() {
   ctx.fillText(clock(), 200, 20);
   // curfew warning
   if (time > 1200) { ctx.fillStyle = '#ff8866'; ctx.fillText('Curfew 9:00 PM!', 300, 20); }
-  // music indicator + spirit & energy meters
-  ctx.fillStyle = Music.on ? '#9c9' : '#555'; ctx.fillText('♪', 400, 20);
-  ctx.fillStyle = '#ccc'; ctx.fillText('SPIRIT', 428, 20);
-  ctx.fillStyle = '#333'; ctx.fillRect(492, 9, 96, 13);
-  const sg = ctx.createLinearGradient(492,0,588,0); sg.addColorStop(0,'#cc8833'); sg.addColorStop(1,'#ffdd66');
-  ctx.fillStyle = sg; ctx.fillRect(492, 9, 96*spirit/100, 13);
-  ctx.strokeStyle = '#888'; ctx.strokeRect(492.5,9.5,96,13);
-  ctx.fillStyle = '#ccc'; ctx.fillText('ENERGY', 604, 20);
-  ctx.fillStyle = '#333'; ctx.fillRect(676, 9, 96, 13);
-  if (energy < 25) ctx.fillStyle = '#cc5544';
-  else { const eg = ctx.createLinearGradient(676,0,772,0); eg.addColorStop(0,'#338855'); eg.addColorStop(1,'#88ee99'); ctx.fillStyle = eg; }
-  ctx.fillRect(676, 9, 96*energy/100, 13);
-  ctx.strokeStyle = '#888'; ctx.strokeRect(676.5,9.5,96,13);
-  ctx.fillStyle = '#ddd'; ctx.font = '13px monospace';
-  ctx.fillText(`Lessons ${stats.lessons}  ★ ${stats.baptisms}`, 800, 20);
+  // music + weather + the three meters
+  ctx.fillStyle = Music.on ? '#9c9' : '#555'; ctx.fillText('♪', 372, 20);
+  if (weather !== 'clear') { ctx.fillStyle = weather === 'rain' ? '#7ac' : '#fa6'; ctx.fillText(weather === 'rain' ? '☔' : '☀', 392, 20); }
+  const meter = (label, lx, val, c1, c2, low) => {
+    ctx.fillStyle = '#ccc'; ctx.font = 'bold 12px monospace'; ctx.fillText(label, lx, 20);
+    const bx = lx + label.length * 7.4 + 6;
+    ctx.fillStyle = '#333'; ctx.fillRect(bx, 9, 72, 13);
+    if (low && val < 25) ctx.fillStyle = '#cc5544';
+    else { const g = ctx.createLinearGradient(bx,0,bx+72,0); g.addColorStop(0,c1); g.addColorStop(1,c2); ctx.fillStyle = g; }
+    ctx.fillRect(bx, 9, 72*val/100, 13);
+    ctx.strokeStyle = '#888'; ctx.strokeRect(bx+0.5, 9.5, 72, 13);
+  };
+  meter('SPIRIT', 418, spirit, '#cc8833', '#ffdd66');
+  meter('ENERGY', 546, energy, '#338855', '#88ee99', true);
+  meter('UNITY',  676, unity,  '#7a5aa8', '#cc99ee');
+  ctx.fillStyle = '#ddd'; ctx.font = 'bold 14px monospace';
+  ctx.fillText(`★ ${stats.baptisms}`, 800, 20);
+  ctx.fillStyle = '#778'; ctx.font = '12px monospace';
+  ctx.fillText('Tab — area book', 845, 20);
   if (promptText && mode==='play') {
     ctx.font = 'bold 15px monospace'; ctx.textAlign='center';
     ctx.fillStyle = 'rgba(10,10,20,0.85)';
@@ -217,7 +226,7 @@ function drawMinimap() {
   for (const c of VROADS) ctx.fillRect(MX + c*T*S, MY, 2, MH2);
   ctx.fillStyle = '#3a6ea8'; ctx.fillRect(MX + 5*T*S, MY + 31*T*S, 9*T*S, 6*T*S);
   for (const h of houses) {
-    ctx.fillStyle = h.baptized ? '#ffd966'
+    ctx.fillStyle = h.baptized ? (h.drifting ? '#aa8844' : '#ffd966')
       : (h.stage==='investigator' && !h.dropped) ? '#66ccff'
       : (h.stage==='appt' && day >= h.apptDay) ? '#88ff88'
       : h.stage==='friendly' ? '#cc99ff'
@@ -349,7 +358,7 @@ function drawTitle() {
     'arguing and pushing drain it. It changes how people respond.',
     '',
     'WASD / Arrows — walk      E — knock & talk      1-4 / click — choose',
-    'Enter — continue      M — music on/off      N — next hymn',
+    'Enter — continue   M — music   N — next hymn   Tab — area book',
     'On touch screens: tap to walk, tap a door to knock, tap to choose.',
     '♪ A new 8-bit hymn every morning — 31 in all. Autosaves daily.',
     'Mondays are P-DAY: laundry, letters home, church-ball, and the pond.',

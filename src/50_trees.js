@@ -605,6 +605,7 @@ const LESSONS = [
 ];
 
 function lessonTree(h) {
+  assignConcern(h);
   const L = LESSONS[h.lessons];
   const ln = h.lessons + 1;
   const name = RES[h.arch].name.split(' ')[0];
@@ -620,8 +621,10 @@ function lessonTree(h) {
     o(`Ask an inspired question: "As we share this — what are YOU feeling?"`, 'key', ()=>{ h.interest+=8; addSpirit(2); }),
     o(`Bear simple, personal testimony.`, 'key', ()=>{ h.interest+=6; addSpirit(3); }),
     o(`Read the scripture together and let them read aloud.`, 'key', ()=>{ h.interest+=7; }),
-    o(`Cover ALL the doctrine, fast, while you have the chance.`, 'firehose', ()=>{ h.interest-=6; }),
+    o(`Hand this part to Elder Sorensen — he's been preparing it all week.`, 'compkey', ()=>{ h.interest+=7; addUnity(6); }),
+    o(`Cover ALL the doctrine, fast, while you have the chance.`, 'firehose', ()=>{ h.interest-=6; addUnity(-3); }),
   ]);
+  nodes.compkey = n(CO, `Elder Sorensen straightens, takes a breath, and teaches it better than you would have — slower, plainer, with a story about his grandfather you've never heard. ${name} leans in. (Two witnesses really are better than one.)`, [ o(`(Continue.)`, 'special') ]);
   nodes.firehose = n(CO, `(Elder Sorensen gently puts a hand on your arm mid-paragraph and asks ${name} a question instead. Later, outside, he says it kindly: "We teach people, not lessons, Elder.")`, [ o(`(He's right.)`, 'key') ]);
   nodes.key = n(ME, L.key, [ o(`(Continue.)`, 'special') ]);
 
@@ -645,7 +648,10 @@ function lessonTree(h) {
       o(`(Wait. Let the Spirit do its work.)`, 'bapresp'),
     ]);
     nodes.bapresp = n(h, null, [ o(`(Continue.)`, 'church') ], ()=>{
-      if (h.interest >= 62) {
+      if (concernBlocks(h, 'bap') && h.concernRevealed) {
+        nodes.bapresp.text = concernOf(h).notYet(name) + `\n\n(The concern is the doorway. Visit again after today's lesson and talk it through.)`;
+        h.interest += 2;
+      } else if (h.interest >= 62 && !concernBlocks(h, 'bap')) {
         nodes.bapresp.text = `The pause stretches. Then ${name} nods — first slowly, then like something has settled. "...Yes. Yeah. I want that."\n\nElder Sorensen is grinning at his shoes. You set a date.\n\n*** BAPTISMAL DATE SET ***`;
         if (!h.bapDate) { h.bapDate = true; bump('bapDates'); addSpirit(8); }
       } else {
@@ -670,22 +676,37 @@ function lessonTree(h) {
     ? `You confirm the plan for Sunday — sacrament meeting at ten, you'll save a seat.`
     : `"${name}, will you come to church with us this Sunday? Sacrament meeting is at ten — we'll sit with you, and warn you about every hymn in advance."`, [
     o(h.churchCommit ? `(Sunday's on.)` : `(Invite, promise, follow up.)`, 'pray', ()=>{
-      if (!h.churchCommit && persuade(55,h)) { h.churchCommit = true; addSpirit(3); }
+      if (!h.churchCommit && !concernBlocks(h, 'church') && persuade(55,h)) { h.churchCommit = true; addSpirit(3); }
     }),
   ]);
   nodes.pray = n('narr', `You close the lesson. Who offers the prayer?`, [
     o(`Invite ${name} to say it — their first out-loud prayer ${ln===1?'maybe ever':'in a while'}.`, 'done', ()=>{ h.interest+=7; addSpirit(3); }),
-    o(`Elder Sorensen offers a warm, simple prayer.`, 'done', ()=>{ h.interest+=3; addSpirit(1); }),
+    o(`Elder Sorensen offers a warm, simple prayer.`, 'done', ()=>{ h.interest+=3; addSpirit(1); addUnity(3); }),
   ]);
-  nodes.done = n('narr', `Lesson ${ln} taught. ${h.churchCommit ? 'They\'re planning on church Sunday. ' : ''}You set a return appointment for tomorrow and step back out into the day.\n\n(Interest: ${'★'.repeat(Math.round((h.interest||0)/20))}${'☆'.repeat(Math.max(0,5-Math.round((h.interest||0)/20)))})`, [
+  const cHint = () => (h.concernKey && h.concernRevealed && h.concernActive)
+    ? `\n(${concernOf(h).short} is still in the way — knock again today and talk it through.)` : '';
+  nodes.done = n('narr', `Lesson ${ln} taught. ${h.churchCommit ? 'They\'re planning on church Sunday. ' : ''}You set a return appointment for tomorrow and step back out into the day.\n\n(Interest: ${'★'.repeat(Math.round((h.interest||0)/20))}${'☆'.repeat(Math.max(0,5-Math.round((h.interest||0)/20)))})${cHint()}`, [
     o(`(Press on.)`, 'END', ()=>{
       tc(25); h.lessons++; h.taughtDay = day; bump('lessons'); addSpirit(4);
+      h.interest += Math.max(0, Math.round((unity - 60) / 12));   // a unified companionship teaches deeper
       h.stage = 'investigator'; h.apptDay = day + 1;
       if (h.interest < 38) { h.dropped = true; h.stage = 'friendly'; }
       if (h.lessons >= 5 && h.bapDate && h.attended) h.pendingBaptism = true;
       if (h.lessons >= 5 && !(h.bapDate && h.attended)) h.finishing = true;
     }),
   ]);
+  // concern reveal: once they trust you enough, the real obstacle surfaces.
+  // Alias the church node so every lesson path passes through the reveal exactly once.
+  const C = concernOf(h);
+  if (C && !h.concernRevealed && ln >= C.lesson) {
+    nodes.churchReal = nodes.church;
+    nodes.church = n(h, C.reveal(name), [
+      o(`"Thank you for trusting us with that. We'll work through it together — that's why we're here."`, 'churchReal', ()=>{
+        h.concernRevealed = true; addSpirit(2);
+        nodes.done.text += `\n(${C.short} is now in the open — knock again today and talk it through.)`;
+      }),
+    ]);
+  }
   return { start:'a', nodes };
 }
 
@@ -699,11 +720,23 @@ TREES.investigatorWait = h => ({ start:'a', nodes:{
   ]),
 }});
 
-TREES.baptizedMember = h => ({ start:'a', nodes:{
-  a: n(h, `${RES[h.arch].name.split(' ')[0]} answers the door with a grin and — you notice — scripture marking pencils on the table behind them. "Elders! I was just doing my reading. Moroni 10 still gets me." Some doors you knock once; some you get to walk through for the rest of your life.`, [
-    o(`(Gratitude. Just — gratitude.)`, 'END', ()=>{ addSpirit(2); }),
-  ]),
-}});
+TREES.baptizedMember = h => {
+  const nm = RES[h.arch].name.split(' ')[0];
+  if (h.drifting) return { start:'a', nodes:{
+    a: n(h, `${nm} opens the door slowly, and the hello has an apology folded inside it. "Elders. Hey. I've been... it's been a week. I missed my reading, and then missing it got easier than doing it." The scriptures are on the shelf. The shelf is high.`, [
+      o(`"We didn't come to check a box, ${nm}. We came because we missed you. Read with us — right now, ten minutes."`, 'b', ()=>{ h.drifting=false; h.lastVisit=day; h.interest+=8; addSpirit(4); tc(15); }),
+      o(`Ask what would help most this week — then arrange it.`, 'b', ()=>{ h.drifting=false; h.lastVisit=day; h.interest+=6; addSpirit(3); }),
+    ]),
+    b: n(h, `Ten minutes later the high shelf is empty and the kitchen table isn't. "Same time Thursday?" ${nm} asks — and means it. New converts don't need lectures. They need company.`, [
+      o(`(Same time Thursday.)`, 'END'),
+    ]),
+  }};
+  return { start:'a', nodes:{
+    a: n(h, `${nm} answers the door with a grin and — you notice — scripture marking pencils on the table behind them. "Elders! I was just doing my reading. Moroni 10 still gets me."${h.calling ? ` There's a ward bulletin on the fridge with their calling circled in pen.` : ''} Some doors you knock once; some you get to walk through for the rest of your life.`, [
+      o(`(Gratitude. Just — gratitude.)`, 'END', ()=>{ addSpirit(2); h.lastVisit = day; }),
+    ]),
+  }};
+};
 
 TREES.rejected = h => ({ start:'a', nodes:{
   a: n('narr', h.polite

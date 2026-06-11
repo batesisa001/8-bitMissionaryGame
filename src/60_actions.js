@@ -15,12 +15,18 @@ function tryInteract() {
 }
 function knock(h) {
   blip(220,.09); blip(200,.09);
-  tc(4); bump('doors'); h.visits++; addEnergy(-2);
+  tc(4); bump('doors'); h.visits++; addEnergy(weather === 'hot' ? -3 : -2);
   let tree;
+  if (weather === 'rain' && h.stage === 'fresh' && !h.referred && !h.baptized && Math.random() < 0.3) {
+    openDlg(rainTree()); return;
+  }
   if (h.baptized) tree = TREES.baptizedMember(h);
   else if (h.rejectedUntil > day) tree = TREES.rejected(h);
   else if (h.arch === 'hostile' && h.rejectedUntil && h.rejectedUntil <= day && h.polite && h.stage !== 'friendly') tree = TREES.hostileSoft(h);
   else if (h.stage === 'investigator') {
+    if (!h.dropped && h.taughtDay === day && h.concernKey && h.concernActive && h.concernRevealed && h.concernTriedDay !== day) {
+      openDlg(concernTree(h), h); return;          // the visit after the lesson — where the real work is
+    }
     if (h.dropped || h.taughtDay === day) tree = TREES.investigatorWait(h);
     else { openLesson(h); return; }
   }
@@ -47,8 +53,8 @@ function openLesson(h) {
         ? `${name} is ready — all five lessons taught and a date set. ${h.attended?'':'One thing left: come to church with us this Sunday, then it\'s official.'}`
         : `All five lessons taught. ${name} is close — you extend the baptismal invitation again, gently.`, [
         o(`(Invite, promise blessings, follow up.)`, 'b', ()=>{
-          if (!h.bapDate && persuade(50,h)) { h.bapDate = true; bump('bapDates'); addSpirit(5); }
-          if (!h.churchCommit) h.churchCommit = persuade(60,h);
+          if (!h.bapDate && !concernBlocks(h, 'bap') && persuade(50,h)) { h.bapDate = true; bump('bapDates'); addSpirit(5); }
+          if (!h.churchCommit && !concernBlocks(h, 'church')) h.churchCommit = persuade(60,h);
         }),
       ]),
       b: n('narr', h.bapDate ? `The date stands. ${h.attended ? 'Everything is ready.' : 'Sunday first — then the font.'}` : `"Soon," ${name} says. "I can feel it getting closer." Keep visiting, keep inviting.`, [ o(`(Onward.)`, 'END') ]),
@@ -65,7 +71,8 @@ let ceremonyText = [];
 function doBaptism(h) {
   const name = RES[h.arch].name;
   h.baptized = true; h.stage = 'baptized'; bump('baptisms');
-  addSpirit(15);
+  h.baptizedDay = day; h.lastVisit = day;     // retention starts now: a friend, a calling, and visits
+  addSpirit(15); addUnity(10);
   ceremonyText = [
     `SATURDAY — THE BAPTISMAL SERVICE`, ``,
     `The font room at the chapel is full: the Halversons brought`,
